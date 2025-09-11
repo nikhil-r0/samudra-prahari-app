@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
 import {
     ActivityIndicator,
+    Alert,
     StyleSheet,
     Text,
     TextInput,
     TouchableOpacity,
     View
 } from 'react-native';
+import { supabase } from '@/lib/supabase';
 
 export default function AuthScreen() {
   const [email, setEmail] = useState('');
@@ -15,10 +17,59 @@ export default function AuthScreen() {
   const [loading, setLoading] = useState(false);
 
   const handleSignIn = async () => {
-    
+    if (!email || !password) {
+      Alert.alert('Error', 'Please fill in all fields');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const { error } = await supabase.auth.signInWithPassword({
+        email: email.trim(),
+        password,
+      });
+
+      if (error) {
+        Alert.alert('Sign In Error', error.message);
+      }
+    } catch (error) {
+      Alert.alert('Error', 'An unexpected error occurred');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleSignUp = async () => {
+    if (!email || !password) {
+      Alert.alert('Error', 'Please fill in all fields');
+      return;
+    }
+
+    if (password.length < 6) {
+      Alert.alert('Error', 'Password must be at least 6 characters long');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const { error } = await supabase.auth.signUp({
+        email: email.trim(),
+        password,
+      });
+
+      if (error) {
+        Alert.alert('Sign Up Error', error.message);
+      } else {
+        Alert.alert(
+          'Success', 
+          'Account created successfully! Please check your email for verification.'
+        );
+      }
+    } catch (error) {
+      Alert.alert('Error', 'An unexpected error occurred');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (

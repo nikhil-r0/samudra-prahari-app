@@ -8,25 +8,33 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
+import { supabase } from '@/lib/supabase';
+import { useAuth } from '@/context/AuthContext';
 
 export default function ProfileScreen() {
+  const { user } = useAuth();
 
-  // Placeholder function for signing out.
-  // This will be fully implemented when auth is wired back up.
   const handleSignOut = async () => {
-    // const { error } = await supabase.auth.signOut();
-    // if (error) {
-    //   Alert.alert('Error', 'Failed to sign out.');
-    // }
-    Alert.alert('Signed Out', 'You have been successfully signed out.');
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) {
+        Alert.alert('Error', 'Failed to sign out: ' + error.message);
+      }
+    } catch (error) {
+      Alert.alert('Error', 'An unexpected error occurred while signing out');
+    }
   };
 
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <FontAwesome5 name="user-circle" size={80} color="#005a9c" />
-        <Text style={styles.userName}>Guardian of the Sea</Text>
-        <Text style={styles.userEmail}>citizen@samudraprahari.org</Text>
+        <Text style={styles.userName}>
+          {user?.user_metadata?.full_name || 'Guardian of the Sea'}
+        </Text>
+        <Text style={styles.userEmail}>
+          {user?.email || 'citizen@samudraprahari.org'}
+        </Text>
       </View>
 
       <View style={styles.menu}>

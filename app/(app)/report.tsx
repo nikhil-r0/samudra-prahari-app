@@ -2,7 +2,6 @@ import { FontAwesome5, FontAwesome6 } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { CameraView, useCameraPermissions, useMicrophonePermissions } from 'expo-camera';
 import { Image } from 'expo-image';
-// Correct imports for the modern API
 import * as Location from 'expo-location';
 import { VideoView, useVideoPlayer } from 'expo-video';
 import React, { useEffect, useRef, useState } from 'react';
@@ -17,21 +16,15 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
+import { supabase } from '@/lib/supabase';
+import { useAuth } from '@/context/AuthContext';
 
-type HazardReport = {
-    id: string;
-    hazard_type: string;
-    description: string;
-    latitude: number;
-    longitude: number;
-    user_id: string;
-    created_at: string;
-    photo_uri?: string;
-    video_uri?: string;
-};
+const BACKEND_API_URL = process.env.EXPO_PUBLIC_BACKEND_API_URL || 'https://your-backend-api.com';
+const SUPABASE_BUCKET = 'reports'; // You'll need to create this bucket in Supabase
 
 export default function ReportScreen() {
-    // ... (All your other state variables remain the same)
+    const { session, user } = useAuth();
+    
     const [hazardType, setHazardType] = useState('');
     const [description, setDescription] = useState('');
     const [location, setLocation] = useState<{ latitude: number; longitude: number } | null>(null);
@@ -49,7 +42,6 @@ export default function ReportScreen() {
     const [isCameraVisible, setIsCameraVisible] = useState(false);
     const [captureMode, setCaptureMode] = useState<'picture' | 'video'>('picture');
 
-    // FIX: Initialize the player ONCE without a source to make it stable.
     const player = useVideoPlayer(null, (player) => {
         player.loop = true;
     });
@@ -70,13 +62,10 @@ export default function ReportScreen() {
     // FIX: Make the cleanup function more robust
     return () => {
         player.pause();
-        // Also explicitly unload the source to prevent race conditions
         player.replaceAsync(null); 
     };
 }, [videoUri]);
 
-    // ... (The rest of your component logic remains the same)
-    // useEffect for location, permission checks, camera functions, handleSubmit...
     useEffect(() => {
         (async () => {
             let { status } = await Location.requestForegroundPermissionsAsync();
@@ -149,7 +138,56 @@ export default function ReportScreen() {
         }
     };
 
+    // Helper function to convert URI to blob for upload
+    const uriToBlob = async (uri: string): Promise<Blob> => {
+        const response = await fetch(uri);
+        return await response.blob();
+    };
+
+    // Helper function to upload media to Supabase Storage
+    const uploadMediaToSupabase = async (uri: string, isVideo: boolean = false): Promise<string | null> => {
+        if (!user) return null;
+
+        try {
+            const fileExt = isVideo ? 'mp4' : 'jpg';
+            const fileName = `${user.id}/${Date.now()}.${fileExt}`;
+            const filePath = `public/reports/${fileName}`;
+
+            // Convert URI to blob
+            const blob = await uriToBlob(uri);
+
+            // Upload to Supabase Storage
+            const { error: uploadError } = await supabase.storage
+                .from(SUPABASE_BUCKET)
+                .upload(filePath, blob, {
+                    contentType: isVideo ? 'video/mp4' : 'image/jpeg',
+                    upsert: false
+                });
+
+            if (uploadError) {
+                throw uploadError;
+            }
+
+            // Get public URL
+            const { data } = supabase.storage
+                .from(SUPABASE_BUCKET)
+                .getPublicUrl(filePath);
+
+            return data.publicUrl;
+        } catch (error) {
+            console.error('Error uploading media:', error);
+            throw error;
+        }
+    };
+
     const handleSubmit = async () => {
+        // Validate user session
+        if (!session || !user) {
+            Alert.alert('Authentication Error', 'Please sign in to submit a report.');
+            return;
+        }
+
+        // Validate form data
         if (!hazardType || !description || !location) {
             Alert.alert('Missing Information', 'Please fill all fields and ensure location is enabled.');
             return;
@@ -157,30 +195,90 @@ export default function ReportScreen() {
 
         setLoading(true);
 
-        const report: HazardReport = {
-            id: `report_${Date.now()}`,
-            hazard_type: hazardType,
-            description,
-            latitude: location.latitude,
-            longitude: location.longitude,
-            user_id: 'anonymous_test_user',
-            created_at: new Date().toISOString(),
-            photo_uri: photoUri || undefined,
-            video_uri: videoUri || undefined,
-        };
-
         try {
-            const existingReports = await AsyncStorage.getItem('queued_reports');
-            const reports = existingReports ? JSON.parse(existingReports) : [];
-            reports.push(report);
-            await AsyncStorage.setItem('queued_reports', JSON.stringify(reports));
-            Alert.alert('Report Queued', 'Your report has been saved locally.');
+            let mediaUrl: string | null = null;
+
+            // Upload media if present
+            if (photoUri) {
+                mediaUrl = await uploadMediaToSupabase(photoUri, false);
+            } else if (videoUri) {
+                mediaUrl = await uploadMediaToSupabase(videoUri, true);
+            }
+
+            // Prepare payload for backend API
+            const reportPayload = {
+                hazard_type: hazardType,
+                description: description,
+                latitude: location.latitude,
+                longitude: location.longitude,
+                media_url: mediaUrl,
+            };
+
+            // Submit to backend API
+            const response = await fetch(`${BACKEND_API_URL}/api/reports/citizen`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${session.access_token}`,
+                },
+                body: JSON.stringify(reportPayload),
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+            }
+
+            const result = await response.json();
+            
+            // Success - reset form and show confirmation
+            Alert.alert(
+                'Report Submitted Successfully', 
+                'Your hazard report has been submitted and will be reviewed by our team.',
+                [{ text: 'OK' }]
+            );
+            
+            // Reset form state
             setHazardType('');
             setDescription('');
             setPhotoUri(null);
             setVideoUri(null);
-        } catch (e) {
-            Alert.alert('Error', 'Could not save the report locally.');
+            
+        } catch (error: any) {
+            console.error('Error submitting report:', error);
+            
+            // Fallback: Save to local storage if backend fails
+            try {
+                const localReport = {
+                    id: `report_${Date.now()}`,
+                    hazard_type: hazardType,
+                    description,
+                    latitude: location.latitude,
+                    longitude: location.longitude,
+                    user_id: user.id,
+                    created_at: new Date().toISOString(),
+                    photo_uri: photoUri || undefined,
+                    video_uri: videoUri || undefined,
+                    status: 'queued_for_upload'
+                };
+
+                const existingReports = await AsyncStorage.getItem('queued_reports');
+                const reports = existingReports ? JSON.parse(existingReports) : [];
+                reports.push(localReport);
+                await AsyncStorage.setItem('queued_reports', JSON.stringify(reports));
+                
+                Alert.alert(
+                    'Report Saved Locally', 
+                    'Unable to submit report online. Your report has been saved locally and will be submitted when connection is restored.',
+                    [{ text: 'OK' }]
+                );
+            } catch (localError) {
+                Alert.alert(
+                    'Submission Failed', 
+                    'Unable to submit report. Please check your internet connection and try again.',
+                    [{ text: 'OK' }]
+                );
+            }
         } finally {
             setLoading(false);
         }
@@ -226,7 +324,6 @@ export default function ReportScreen() {
     );
 
     if (isCameraVisible) {
-        // ... (Camera view JSX remains the same)
         return (
             <View style={styles.cameraContainer}>
                 <CameraView
@@ -253,7 +350,6 @@ export default function ReportScreen() {
         );
     }
     
-    // ... (Main return JSX for the form remains the same)
     return (
         <ScrollView contentContainerStyle={styles.container}>
             <Text style={styles.title}>Report a New Hazard</Text>
