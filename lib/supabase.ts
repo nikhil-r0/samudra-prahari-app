@@ -1,16 +1,16 @@
 import 'react-native-url-polyfill/auto';
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
-const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
+const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL || process.env.VITE_SUPABASE_URL;
+const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY;
 
 if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error('Missing Supabase environment variables. Please check your .env file and ensure EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_ANON_KEY are set.');
+  throw new Error('Missing Supabase environment variables. Supabase connection may not be properly configured.');
 }
 
 // Validate that the URL is properly formatted
 if (!supabaseUrl.startsWith('http://') && !supabaseUrl.startsWith('https://')) {
-  throw new Error('Invalid Supabase URL format. Please ensure EXPO_PUBLIC_SUPABASE_URL starts with http:// or https://');
+  throw new Error(`Invalid Supabase URL format: ${supabaseUrl}. URL must start with http:// or https://`);
 }
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
