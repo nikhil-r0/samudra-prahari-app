@@ -2,7 +2,8 @@ import { Stack } from 'expo-router';
 import { useRouter, useSegments } from 'expo-router';
 import React from 'react';
 import { ActivityIndicator, View, StyleSheet } from 'react-native';
-import { AuthProvider, useAuth } from '@/context/AuthContext';
+import { AuthProvider, useAuth } from '@/context/AuthContext'
+import { useFrameworkReady } from '@/hooks/useFrameworkReady';
 
 // Protected route wrapper component
 function RootLayoutNav() {
@@ -42,6 +43,7 @@ function RootLayoutNav() {
 }
 
 export default function RootLayout() {
+  useFrameworkReady();
   return (
     <AuthProvider>
       <RootLayoutNav />
