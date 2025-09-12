@@ -21,8 +21,9 @@ import {
     View,
 } from 'react-native';
 
+// IMPORTANT: Replace YOUR_COMPUTER_IP with your actual local IP address.
 const BACKEND_API_URL = process.env.EXPO_PUBLIC_BACKEND_API_URL || 'https://your-backend-api.com';
-const SUPABASE_BUCKET = 'reports'; // You'll need to create this bucket in Supabase
+const SUPABASE_BUCKET = 'reports'; 
 
 export default function ReportScreen() {
     const { session, user } = useAuth();
@@ -139,21 +140,20 @@ export default function ReportScreen() {
         }
     };
 
-    // Helper function to upload media to Supabase Storage, following RN best practices
     const uploadMediaToSupabase = async (uri: string, isVideo: boolean = false): Promise<string | null> => {
         if (!user) return null;
 
         try {
+            // UPDATED: Create a user-specific file path as per the new RLS policies.
+            // This organizes uploads into folders based on the user's ID.
             const fileExt = isVideo ? 'mp4' : 'jpg';
-            const fileName = `${user.id}/${Date.now()}.${fileExt}`;
-            const filePath = `public/reports/${fileName}`;
+            const fileName = `${Date.now()}.${fileExt}`;
+            const filePath = `${user.id}/${fileName}`;
 
-            // Read the file from the URI into a base64 string
             const base64 = await readAsStringAsync(uri, {
                 encoding: 'base64',
             });
             
-            // Upload to Supabase Storage using ArrayBuffer
             const { error: uploadError } = await supabase.storage
                 .from(SUPABASE_BUCKET)
                 .upload(filePath, decode(base64), {
@@ -162,10 +162,10 @@ export default function ReportScreen() {
                 });
 
             if (uploadError) {
+                console.error("Supabase Upload Error:", uploadError);
                 throw uploadError;
             }
 
-            // Get public URL
             const { data } = supabase.storage
                 .from(SUPABASE_BUCKET)
                 .getPublicUrl(filePath);
