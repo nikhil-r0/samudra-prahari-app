@@ -1,6 +1,10 @@
+import { useAuth } from '@/context/AuthContext';
+import { supabase } from '@/lib/supabase';
 import { FontAwesome5, FontAwesome6 } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { decode } from 'base64-arraybuffer';
 import { CameraView, useCameraPermissions, useMicrophonePermissions } from 'expo-camera';
+import { readAsStringAsync } from 'expo-file-system/legacy';
 import { Image } from 'expo-image';
 import * as Location from 'expo-location';
 import { VideoView, useVideoPlayer } from 'expo-video';
@@ -16,8 +20,6 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
-import { supabase } from '@/lib/supabase';
-import { useAuth } from '@/context/AuthContext';
 
 const BACKEND_API_URL = process.env.EXPO_PUBLIC_BACKEND_API_URL || 'https://your-backend-api.com';
 const SUPABASE_BUCKET = 'reports'; // You'll need to create this bucket in Supabase
@@ -59,7 +61,6 @@ export default function ReportScreen() {
 
     loadVideo();
 
-    // FIX: Make the cleanup function more robust
     return () => {
         player.pause();
         player.replaceAsync(null); 
@@ -138,13 +139,7 @@ export default function ReportScreen() {
         }
     };
 
-    // Helper function to convert URI to blob for upload
-    const uriToBlob = async (uri: string): Promise<Blob> => {
-        const response = await fetch(uri);
-        return await response.blob();
-    };
-
-    // Helper function to upload media to Supabase Storage
+    // Helper function to upload media to Supabase Storage, following RN best practices
     const uploadMediaToSupabase = async (uri: string, isVideo: boolean = false): Promise<string | null> => {
         if (!user) return null;
 
@@ -153,13 +148,15 @@ export default function ReportScreen() {
             const fileName = `${user.id}/${Date.now()}.${fileExt}`;
             const filePath = `public/reports/${fileName}`;
 
-            // Convert URI to blob
-            const blob = await uriToBlob(uri);
-
-            // Upload to Supabase Storage
+            // Read the file from the URI into a base64 string
+            const base64 = await readAsStringAsync(uri, {
+                encoding: 'base64',
+            });
+            
+            // Upload to Supabase Storage using ArrayBuffer
             const { error: uploadError } = await supabase.storage
                 .from(SUPABASE_BUCKET)
-                .upload(filePath, blob, {
+                .upload(filePath, decode(base64), {
                     contentType: isVideo ? 'video/mp4' : 'image/jpeg',
                     upsert: false
                 });
@@ -181,13 +178,11 @@ export default function ReportScreen() {
     };
 
     const handleSubmit = async () => {
-        // Validate user session
         if (!session || !user) {
             Alert.alert('Authentication Error', 'Please sign in to submit a report.');
             return;
         }
 
-        // Validate form data
         if (!hazardType || !description || !location) {
             Alert.alert('Missing Information', 'Please fill all fields and ensure location is enabled.');
             return;
@@ -198,14 +193,12 @@ export default function ReportScreen() {
         try {
             let mediaUrl: string | null = null;
 
-            // Upload media if present
             if (photoUri) {
                 mediaUrl = await uploadMediaToSupabase(photoUri, false);
             } else if (videoUri) {
                 mediaUrl = await uploadMediaToSupabase(videoUri, true);
             }
 
-            // Prepare payload for backend API
             const reportPayload = {
                 hazard_type: hazardType,
                 description: description,
@@ -214,7 +207,6 @@ export default function ReportScreen() {
                 media_url: mediaUrl,
             };
 
-            // Submit to backend API
             const response = await fetch(`${BACKEND_API_URL}/api/reports/citizen`, {
                 method: 'POST',
                 headers: {
@@ -231,14 +223,12 @@ export default function ReportScreen() {
 
             const result = await response.json();
             
-            // Success - reset form and show confirmation
             Alert.alert(
                 'Report Submitted Successfully', 
                 'Your hazard report has been submitted and will be reviewed by our team.',
                 [{ text: 'OK' }]
             );
             
-            // Reset form state
             setHazardType('');
             setDescription('');
             setPhotoUri(null);
@@ -247,7 +237,6 @@ export default function ReportScreen() {
         } catch (error: any) {
             console.error('Error submitting report:', error);
             
-            // Fallback: Save to local storage if backend fails
             try {
                 const localReport = {
                     id: `report_${Date.now()}`,
@@ -303,7 +292,6 @@ export default function ReportScreen() {
 
             {videoUri ? (
                 <View style={styles.mediaPreview}>
-                    {/* FIX: Use VideoView with the correct props */}
                     <VideoView
                         player={player}
                         style={styles.previewImage}
@@ -372,7 +360,6 @@ export default function ReportScreen() {
 }
 
 
-// Styles remain the same
 const styles = StyleSheet.create({
     container: {
         flexGrow: 1,
@@ -526,3 +513,4 @@ const styles = StyleSheet.create({
         fontSize: 16,
     }
 });
+
