@@ -1,88 +1,126 @@
 import { FontAwesome5 } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React from 'react';
-import { ImageBackground, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import {
+  ImageBackground,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View
+} from 'react-native';
 
-// 🔹 Shark Week Component (Hero Section)
-const SharkWeekCard = () => {
+// --- Demo Data for Marina Beach, Chennai ---
+const waveForecastData = [
+  { time: '12 PM', height: 0.8, label: 'Calm' },
+  { time: '3 PM', height: 1.1, label: 'Slight' },
+  { time: '6 PM', height: 1.0, label: 'Slight' },
+  { time: '9 PM', height: 0.7, label: 'Calm' },
+];
+
+const touristSpots = [
+    { name: 'Marina Lighthouse', icon: 'binoculars', description: 'Stunning panoramic views of the city and sea.' },
+    { name: 'Vivekananda House', icon: 'landmark', description: 'A historic monument and museum.' },
+    { name: 'Anna Memorial', icon: 'monument', description: 'A peaceful memorial on the beach front.' },
+];
+
+const localEats = [
+    { name: 'Fresh Sundal & Bajji', icon: 'pepper-hot', description: 'Iconic beachside snacks from local vendors.' },
+    { name: 'Murugan Idli Shop', icon: 'utensils', description: 'Famous for soft idlis and traditional fare.' },
+];
+
+// 🔹 Hero Section Component
+const HeroBanner = () => {
   return (
+    <View style={heroStyles.container}>
         <ImageBackground
-          source={require('@/assets/images/ocean.jpeg')}
-          style={sharkStyles.background}
+          source={{ uri: 'https://images.unsplash.com/photo-1616895993353-e9988a8a3c9b?q=80&w=2070' }}
+          style={heroStyles.background}
           resizeMode="cover"
         >
-          <View style={sharkStyles.overlayCard}>
-            <Text style={sharkStyles.title}>Ocean</Text>
-            <Text style={sharkStyles.description}>
-              Join Us to protect Ocean and also the People near beaches
+          <View style={heroStyles.overlay} />
+          <View style={heroStyles.textContainer}>
+            <Text style={heroStyles.title}>Marina Beach Watch</Text>
+            <Text style={heroStyles.subtitle}>
+              Your guide to Chennai's iconic coastline.
             </Text>
           </View>
         </ImageBackground>
+    </View>
   );
 };
-
-const sharkStyles = StyleSheet.create({
-  background: {
-    width: '100%',
-    height: 350, // fixed height like a hero banner
-    justifyContent: "center",
-    alignItems: "flex-end",
-  },
-  wave: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    zIndex: 2, // keep above card
-  },
-  overlayCard: {
-    backgroundColor: "#fff",
-    borderRadius: 12,
-    padding: 20,
-    marginRight: 20,
-    width: "40%",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 5 },
-    shadowOpacity: 0.2,
-    shadowRadius: 10,
-    elevation: 5,
-  },
-  title: {
-    fontSize: 22,
-    fontWeight: "bold",
-    color: "#004AAD",
-    marginBottom: 10,
-  },
-  description: {
-    fontSize: 15,
-    color: "#1a1a1a",
-  },
-});
 
 // 🔹 Dashboard Screen
 export default function DashboardScreen() {
   const router = useRouter();
+
   return (
-    <View style={{ flex: 1 }}>
-      {/* Scrollable Dashboard Content */}
+    <View style={{ flex: 1, backgroundColor: '#f0f8ff' }}>
       <ScrollView contentContainerStyle={styles.container}>
-        <SharkWeekCard />
-        <Text style={styles.header}>Welcome, Guardian of the Sea</Text>
+        <HeroBanner />
+
+        {/* Welcome Header */}
+        <Text style={styles.header}>Welcome, Guardian of Marina!</Text>
+
+        {/* Report Hazard Button */}
+        <TouchableOpacity 
+          style={styles.reportButton}
+          onPress={() => router.push('/report')}
+        >
+            <FontAwesome5 name="exclamation-triangle" size={20} color="white" />
+            <Text style={styles.reportButtonText}>Report a Hazard</Text>
+        </TouchableOpacity>
 
         {/* Live Coastal Data Section */}
         <View style={styles.card}>
           <View style={styles.cardHeader}>
             <FontAwesome5 name="water" size={22} color="#0077be" />
-            <Text style={styles.cardTitle}>Live Coastal Data</Text>
+            <Text style={styles.cardTitle}>Today's Coastal Data</Text>
           </View>
           <View style={styles.dataRow}>
-              <Text style={styles.dataLabel}>Tide:</Text>
-              <Text style={styles.dataValue}>High at 2:45 PM</Text>
+              <Text style={styles.dataLabel}>Tide Status:</Text>
+              <Text style={styles.dataValue}>High Tide at 3:15 PM</Text>
           </View>
-          <View style={styles.dataRow}>
-              <Text style={styles.dataLabel}>Wave Forecast:</Text>
-              <Text style={styles.dataValue}>1.2m (Slight)</Text>
+          <Text style={[styles.dataLabel, { marginTop: 10, marginBottom: 5 }]}>Wave Forecast:</Text>
+          <View style={styles.waveContainer}>
+            {waveForecastData.map((wave, index) => (
+                <View key={index} style={styles.waveItem}>
+                    <Text style={styles.waveTime}>{wave.time}</Text>
+                    <View style={[styles.waveBar, { height: wave.height * 30 }]} />
+                    <Text style={styles.waveHeight}>{wave.height}m</Text>
+                </View>
+            ))}
           </View>
-           <Text style={styles.notice}>Live data coming soon.</Text>
+        </View>
+        
+        {/* Tourist Guide Section */}
+        <View style={styles.card}>
+          <View style={styles.cardHeader}>
+            <FontAwesome5 name="map-marked-alt" size={22} color="#0077be" />
+            <Text style={styles.cardTitle}>Marina Explorer's Guide</Text>
+          </View>
+          
+          <Text style={styles.guideSubtitle}>Nearby Attractions</Text>
+          {touristSpots.map((spot, index) => (
+            <View key={index} style={styles.guideItem}>
+                <FontAwesome5 name={spot.icon as any} size={20} color="#005a9c" />
+                <View style={styles.guideTextContainer}>
+                    <Text style={styles.guideItemTitle}>{spot.name}</Text>
+                    <Text style={styles.guideItemDesc}>{spot.description}</Text>
+                </View>
+            </View>
+          ))}
+
+          <Text style={styles.guideSubtitle}>Must-Try Local Food</Text>
+           {localEats.map((eat, index) => (
+            <View key={index} style={styles.guideItem}>
+                <FontAwesome5 name={eat.icon as any} size={20} color="#005a9c" />
+                <View style={styles.guideTextContainer}>
+                    <Text style={styles.guideItemTitle}>{eat.name}</Text>
+                    <Text style={styles.guideItemDesc}>{eat.description}</Text>
+                </View>
+            </View>
+          ))}
         </View>
 
         {/* AI Safety & Info Bot Section */}
@@ -92,10 +130,10 @@ export default function DashboardScreen() {
             <Text style={styles.cardTitle}>AI Safety & Info Bot</Text>
           </View>
           <Text style={styles.cardContent}>
-              Ask questions like "Is it safe to swim at Marina Beach today?" for real-time safety advice.
+              Ask "Is swimming allowed at Marina Beach now?" for real-time safety alerts.
           </Text>
-          <TouchableOpacity style={styles.chatButton}>
-              <Text style={styles.chatButtonText}>Open Chat (Coming Soon)</Text>
+          <TouchableOpacity style={styles.chatButton} onPress={() => router.push('/chat')}>
+              <Text style={styles.chatButtonText}>Open Chat</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
@@ -103,29 +141,75 @@ export default function DashboardScreen() {
   );
 }
 
+// 🔹 Hero Styles
+const heroStyles = StyleSheet.create({
+    container: {
+        height: 250,
+        width: '100%',
+        borderBottomLeftRadius: 30,
+        borderBottomRightRadius: 30,
+        overflow: 'hidden',
+        elevation: 5,
+        backgroundColor: '#005a9c',
+    },
+    background: {
+        width: '100%',
+        height: '100%',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    overlay: {
+        ...StyleSheet.absoluteFillObject,
+        backgroundColor: 'rgba(0, 50, 90, 0.5)',
+    },
+    textContainer: {
+        alignItems: 'center',
+        paddingHorizontal: 20,
+    },
+    title: {
+        fontSize: 32,
+        fontWeight: 'bold',
+        color: '#fff',
+        textAlign: 'center',
+        textShadowColor: 'rgba(0, 0, 0, 0.5)',
+        textShadowOffset: { width: 1, height: 1 },
+        textShadowRadius: 3,
+    },
+    subtitle: {
+        fontSize: 16,
+        color: '#fff',
+        textAlign: 'center',
+        marginTop: 8,
+    },
+});
+
 // 🔹 Dashboard Styles
 const styles = StyleSheet.create({
   container: {
-    flexGrow: 1,
-    padding: 20,
-    backgroundColor: '#f0f8ff',
+    paddingBottom: 40,
   },
   header: {
-    fontSize: 24,
+    fontSize: 26,
     fontWeight: 'bold',
     color: '#005a9c',
-    marginBottom: 20,
+    marginVertical: 25,
+    paddingHorizontal: 20,
     textAlign: 'center',
   },
   reportButton: {
     flexDirection: 'row',
     backgroundColor: '#d9534f',
+    marginHorizontal: 20,
     paddingVertical: 18,
-    borderRadius: 10,
+    borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 25,
-    elevation: 3,
+    elevation: 4,
+    shadowColor: '#d9534f',
+    shadowOpacity: 0.3,
+    shadowRadius: 5,
+    shadowOffset: { width: 0, height: 4 },
   },
   reportButtonText: {
     color: 'white',
@@ -135,14 +219,15 @@ const styles = StyleSheet.create({
   },
   card: {
     backgroundColor: 'white',
-    borderRadius: 10,
+    borderRadius: 15,
     padding: 20,
+    marginHorizontal: 20,
     marginBottom: 20,
     elevation: 2,
     shadowColor: '#000',
-    shadowOpacity: 0.1,
-    shadowRadius: 5,
-    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
   },
   cardHeader: {
     flexDirection: 'row',
@@ -153,7 +238,7 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: '600',
     color: '#005a9c',
-    marginLeft: 10,
+    marginLeft: 12,
   },
   dataRow: {
     flexDirection: 'row',
@@ -163,17 +248,68 @@ const styles = StyleSheet.create({
   dataLabel: {
     fontSize: 16,
     color: '#333',
+    fontWeight: '500',
   },
   dataValue: {
     fontSize: 16,
-    fontWeight: '500',
+    fontWeight: 'bold',
     color: '#005a9c',
   },
-   notice: {
-    textAlign: 'center',
-    marginTop: 10,
-    fontStyle: 'italic',
-    color: '#888'
+  waveContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    alignItems: 'flex-end',
+    height: 100,
+    backgroundColor: '#e6f2ff',
+    borderRadius: 10,
+    paddingTop: 10,
+  },
+  waveItem: {
+    alignItems: 'center',
+    flex: 1,
+  },
+  waveTime: {
+    fontSize: 12,
+    color: '#005a9c',
+  },
+  waveBar: {
+    width: 25,
+    backgroundColor: '#0077be',
+    borderRadius: 5,
+    marginTop: 5,
+  },
+  waveHeight: {
+    fontSize: 12,
+    fontWeight: 'bold',
+    color: '#005a9c',
+    marginTop: 4,
+  },
+  guideSubtitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#333',
+    marginTop: 15,
+    marginBottom: 10,
+    borderTopColor: '#eee',
+    borderTopWidth: 1,
+    paddingTop: 15,
+  },
+  guideItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 8,
+  },
+  guideTextContainer: {
+    marginLeft: 15,
+  },
+  guideItemTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#005a9c',
+  },
+  guideItemDesc: {
+    fontSize: 14,
+    color: '#666',
   },
   cardContent: {
       fontSize: 16,
@@ -182,7 +318,7 @@ const styles = StyleSheet.create({
       marginBottom: 15,
   },
   chatButton: {
-      backgroundColor: '#f0f8ff',
+      backgroundColor: '#e6f2ff',
       paddingVertical: 12,
       borderRadius: 8,
       alignItems: 'center',
@@ -193,3 +329,4 @@ const styles = StyleSheet.create({
       fontWeight: 'bold',
   }
 });
+

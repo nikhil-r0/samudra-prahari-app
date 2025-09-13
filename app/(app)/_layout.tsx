@@ -1,11 +1,9 @@
 import { FontAwesome5 } from '@expo/vector-icons';
 import { Tabs } from 'expo-router';
 import React from 'react';
-// 1. Import the hook
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function TabLayout() {
-  // 2. Get the safe area insets
   const insets = useSafeAreaInsets();
 
   return (
@@ -17,10 +15,7 @@ export default function TabLayout() {
           backgroundColor: '#ffffff',
           borderTopWidth: 1,
           borderTopColor: '#e0e0e0',
-          // 3. Apply the bottom inset to the height and padding
-          // We add the original height (60) to the inset value
           height: 60 + insets.bottom, 
-          // We add the original padding (5) to the inset value
           paddingBottom: 5 + insets.bottom,
         },
         headerStyle: {
@@ -50,6 +45,14 @@ export default function TabLayout() {
           ),
         }}
       />
+       {/* This screen is hidden from the tab bar but can be navigated to */}
+      <Tabs.Screen
+        name="chat"
+        options={{
+          title: 'AI Safety Bot',
+          href: null, // Hides this screen from the tab bar
+        }}
+      />
       <Tabs.Screen
         name="history"
         options={{
@@ -71,3 +74,4 @@ export default function TabLayout() {
     </Tabs>
   );
 }
+

@@ -12,6 +12,8 @@ import React, { useEffect, useRef, useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
+    KeyboardAvoidingView,
+    Platform,
     Pressable,
     ScrollView,
     StyleSheet,
@@ -339,6 +341,10 @@ export default function ReportScreen() {
     }
     
     return (
+        <KeyboardAvoidingView
+              style={styles.keyboardAvoidingContainer}
+              behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            >
         <ScrollView contentContainerStyle={styles.container}>
             <Text style={styles.title}>Report a New Hazard</Text>
             <Text style={styles.label}>Type of Hazard</Text>
@@ -356,11 +362,16 @@ export default function ReportScreen() {
                 {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.submitButtonText}>Submit Report</Text>}
             </TouchableOpacity>
         </ScrollView>
+        </KeyboardAvoidingView>
     );
 }
 
 
 const styles = StyleSheet.create({
+    keyboardAvoidingContainer: {
+        flex: 1,
+        backgroundColor: '#f0f8ff',
+    },
     container: {
         flexGrow: 1,
         padding: 20,
