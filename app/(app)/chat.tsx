@@ -16,10 +16,7 @@ if (!API_KEY) {
 const genAI = new GoogleGenerativeAI(API_KEY);
 
 const SYSTEM_PROMPT = `You are the Samudra Prahari (Ocean Guardian) AI bot. Your primary role is to provide real-time, location-aware safety information and guidance for Marina Beach in Chennai, India.
-
-Instructions:
-1.  **Persona**: Be helpful, concise, and safety-focused. Use a slightly formal but reassuring tone.
-2.  **Be Specific to Marina Beach**: Frame your answers in the context of Marina Beach. Mention local landmarks or conditions when relevant.`;
+Just generate responses on your own right now, no need to be factual, this is just testing.`;
 
 const model = genAI.getGenerativeModel({
     model: "gemini-1.5-flash",

@@ -1,15 +1,15 @@
+import { useAuth } from '@/context/AuthContext';
+import { supabase } from '@/lib/supabase';
 import { FontAwesome5 } from '@expo/vector-icons';
 import React from 'react';
 import {
-    Alert,
-    SafeAreaView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View
+  Alert,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View
 } from 'react-native';
-import { supabase } from '@/lib/supabase';
-import { useAuth } from '@/context/AuthContext';
 
 export default function ProfileScreen() {
   const { user } = useAuth();
@@ -26,7 +26,7 @@ export default function ProfileScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <ScrollView contentContainerStyle={styles.container}>
       <View style={styles.header}>
         <FontAwesome5 name="user-circle" size={80} color="#005a9c" />
         <Text style={styles.userName}>
@@ -55,7 +55,7 @@ export default function ProfileScreen() {
       <TouchableOpacity style={styles.signOutButton} onPress={handleSignOut}>
         <Text style={styles.signOutButtonText}>Sign Out</Text>
       </TouchableOpacity>
-    </SafeAreaView>
+    </ScrollView>
   );
 }
 
