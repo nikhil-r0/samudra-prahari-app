@@ -72,16 +72,49 @@ export default function ReportScreen() {
 
     useEffect(() => {
         (async () => {
-            let { status } = await Location.requestForegroundPermissionsAsync();
-            if (status !== 'granted') {
-                setLocationError('Permission to access location was denied');
-                return;
+            try {
+                const { status } = await Location.requestForegroundPermissionsAsync();
+                if (status !== 'granted') {
+                    setLocationError('Permission to access location was denied.');
+                    return;
+                }
+
+                // This is the correct way to implement a timeout
+                const locationPromise = Location.getCurrentPositionAsync({
+                    accuracy: Location.Accuracy.Balanced,
+                });
+
+                const timeoutPromise = new Promise((_, reject) => {
+                    setTimeout(() => {
+                        reject(new Error('Request timed out.'));
+                    }, 20000); // 20-second timeout
+                });
+
+                // Promise.race will resolve or reject as soon as the first promise in the array does.
+                const locationResult = await Promise.race([locationPromise, timeoutPromise]);
+
+                setLocation({
+                    // @ts-ignore - Promise.race returns Promise<LocationObject | void> so we need to ignore the type error
+                    latitude: locationResult.coords.latitude,
+                    // @ts-ignore
+                    longitude: locationResult.coords.longitude,
+                });
+
+            } catch (error: any) {
+                console.warn("Could not get live location; falling back to last known position.", error.message);
+
+                // If the live location fails (including a timeout), try to get the last known location
+                const lastKnown = await Location.getLastKnownPositionAsync();
+                if (lastKnown) {
+                    setLocation({
+                        latitude: lastKnown.coords.latitude,
+                        longitude: lastKnown.coords.longitude,
+                    });
+                } else {
+                    // If both fail, show the error
+                    setLocationError('Location is unavailable. Try again outdoors with a clear sky view.');
+                }
             }
-            let locationResult = await Location.getCurrentPositionAsync({});
-            setLocation({
-                latitude: locationResult.coords.latitude,
-                longitude: locationResult.coords.longitude,
-            });
         })();
     }, []);
 
