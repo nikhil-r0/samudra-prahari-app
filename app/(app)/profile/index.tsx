@@ -2,7 +2,7 @@ import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/lib/supabase';
 import { FontAwesome5 } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import React from 'react';
+import React, { useEffect } from 'react';
 import {
   Alert,
   Linking,
@@ -13,9 +13,48 @@ import {
   View
 } from 'react-native';
 
+// Function to send a test notification
+async function sendPushNotification(expoPushToken: string) {
+  const message = {
+    to: expoPushToken,
+    sound: 'default',
+    title: 'Samudra Prahari Test 🌊',
+    body: 'This is a test notification from your app!',
+    data: { testData: 'This is a test.' },
+  };
+
+  await fetch('https://exp.host/--/api/v2/push/send', {
+    method: 'POST',
+    headers: {
+      Accept: 'application/json',
+      'Accept-encoding': 'gzip, deflate',
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(message),
+  });
+}
+
 export default function ProfileScreen() {
-  const { user } = useAuth();
+  // FIX: Destructure expoPushToken from the useAuth hook
+  const { user, updateProfileWithNotifications, expoPushToken } = useAuth();
   const router = useRouter();
+
+  useEffect(() => {
+    // This will run when the profile screen is opened
+    updateProfileWithNotifications();
+  }, []);
+
+  // FIX: Add the handleTestNotification function
+  const handleTestNotification = async () => {
+    if (expoPushToken) {
+      await sendPushNotification(expoPushToken);
+      Alert.alert('Notification Sent!', 'Check your device notifications.');
+    } else {
+      Alert.alert('No Push Token', 'Could not send notification. Is the push token available?');
+    }
+  };
+
+
   const handleSignOut = async () => {
     try {
       const { error } = await supabase.auth.signOut();
@@ -29,7 +68,7 @@ export default function ProfileScreen() {
 
   return (
     <View style={styles.container}>
-      <ScrollView >
+      <ScrollView contentContainerStyle={{paddingBottom: 20}}>
         <View style={styles.header}>
           <FontAwesome5 name="user-circle" size={80} color="#005a9c" />
           <Text style={styles.userName}>
@@ -60,9 +99,16 @@ export default function ProfileScreen() {
             <FontAwesome5 name="question-circle" size={20} color="#333" />
             <Text style={styles.menuItemText}>Help & Support</Text>
           </TouchableOpacity>
+          {/* Add the Test Notification Button */}
+          {expoPushToken && (
+             <TouchableOpacity style={styles.menuItem} onPress={handleTestNotification}>
+                <FontAwesome5 name="bell" size={20} color="#333" />
+                <Text style={styles.menuItemText}>Test Notification</Text>
+            </TouchableOpacity>
+          )}
           <TouchableOpacity style={styles.signOutButton} onPress={handleSignOut}>
-          <Text style={styles.signOutButtonText}>Sign Out</Text>
-        </TouchableOpacity>
+            <Text style={styles.signOutButtonText}>Sign Out</Text>
+          </TouchableOpacity>
         </View>
       </ScrollView>
     </View>
@@ -76,8 +122,8 @@ const styles = StyleSheet.create({
   },
   header: {
     alignItems: 'center',
-    marginTop: 40,
-    marginBottom: 40,
+    paddingTop: 40,
+    paddingBottom: 20,
   },
   userName: {
     fontSize: 24,
@@ -91,7 +137,7 @@ const styles = StyleSheet.create({
     marginTop: 5,
   },
   menu: {
-    width: '90%',
+    marginHorizontal: 20,
     backgroundColor: 'white',
     borderRadius: 10,
     paddingVertical: 10,
@@ -113,9 +159,10 @@ const styles = StyleSheet.create({
   signOutButton: {
     backgroundColor: '#d9534f',
     paddingVertical: 15,
-    paddingHorizontal: 50,
+    margin: 20,
     borderRadius: 10,
     elevation: 2,
+    alignItems: 'center',
   },
   signOutButtonText: {
     color: 'white',
