@@ -9,10 +9,12 @@ import {
   StyleSheet,
   Text,
   TextInput,
-  TouchableOpacity
+  TouchableOpacity,
 } from 'react-native';
 
 export default function AuthScreen() {
+  // 1. Add state for the user's name
+  const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isSignUp, setIsSignUp] = useState(false);
@@ -42,7 +44,8 @@ export default function AuthScreen() {
   };
 
   const handleSignUp = async () => {
-    if (!email || !password) {
+    // 2. Update validation to include the name
+    if (!name || !email || !password) {
       Alert.alert('Error', 'Please fill in all fields');
       return;
     }
@@ -54,16 +57,22 @@ export default function AuthScreen() {
 
     setLoading(true);
     try {
+      // 3. Pass the name in the 'options.data' object to Supabase
       const { error } = await supabase.auth.signUp({
         email: email.trim(),
         password,
+        options: {
+          data: {
+            full_name: name.trim(), // This sends the name as user metadata
+          },
+        },
       });
 
       if (error) {
         Alert.alert('Sign Up Error', error.message);
       } else {
         Alert.alert(
-          'Success', 
+          'Success',
           'Account created successfully! Please check your email for verification.'
         );
       }
@@ -72,6 +81,14 @@ export default function AuthScreen() {
     } finally {
       setLoading(false);
     }
+  };
+
+  // Optional: Clear fields when switching between sign-in/sign-up
+  const toggleMode = () => {
+    setIsSignUp(!isSignUp);
+    setName('');
+    setEmail('');
+    setPassword('');
   };
 
   return (
@@ -87,6 +104,18 @@ export default function AuthScreen() {
         <Text style={styles.subtitle}>
           {isSignUp ? 'Create an Account' : 'Sign In to Continue'}
         </Text>
+
+        {/* 4. Conditionally render the Name input field */}
+        {isSignUp && (
+          <TextInput
+            style={styles.input}
+            placeholder="Full Name"
+            value={name}
+            onChangeText={setName}
+            autoCapitalize="words"
+            placeholderTextColor="#888"
+          />
+        )}
 
         <TextInput
           style={styles.input}
@@ -120,7 +149,7 @@ export default function AuthScreen() {
           )}
         </TouchableOpacity>
 
-        <TouchableOpacity onPress={() => setIsSignUp(!isSignUp)} disabled={loading}>
+        <TouchableOpacity onPress={toggleMode} disabled={loading}>
           <Text style={styles.toggleText}>
             {isSignUp
               ? 'Already have an account? Sign In'

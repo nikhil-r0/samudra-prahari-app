@@ -3,6 +3,7 @@ import { Tabs } from 'expo-router';
 import React from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+
 export default function TabLayout() {
   const insets = useSafeAreaInsets();
 
@@ -51,6 +52,15 @@ export default function TabLayout() {
         options={{
           title: 'AI Safety Bot',
           href: null, // Hides this screen from the tab bar
+        }}
+      />
+      <Tabs.Screen
+        name="bchat"
+        options={{
+          title: 'Mesh Chat',
+          tabBarIcon: ({ color }) => (
+            <FontAwesome5 name="bluetooth" size={24} color={color} />
+          ),
         }}
       />
       <Tabs.Screen

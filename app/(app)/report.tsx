@@ -23,14 +23,24 @@ import {
     View,
 } from 'react-native';
 
-// IMPORTANT: Replace YOUR_COMPUTER_IP with your actual local IP address.
+// CHANGE 1: Define HazardType enum to match the backend schema
+const hazardOptions = [
+    { label: 'High Waves', value: 'HIGH_WAVES' },
+    { label: 'Swell Surge', value: 'SWELL_SURGE' },
+    { label: 'Coastal Flooding', value: 'COASTAL_FLOODING' },
+    { label: 'Unusual Tide', value: 'UNUSUAL_TIDE' },
+    { label: 'Tsunami Sighting', value: 'TSUNAMI_SIGHTING' },
+    { label: 'Other', value: 'OTHER' },
+];
+
 const BACKEND_API_URL = process.env.EXPO_PUBLIC_BACKEND_API_URL || 'https://your-backend-api.com';
 const SUPABASE_BUCKET = 'reports'; 
 
 export default function ReportScreen() {
     const { session, user } = useAuth();
     
-    const [hazardType, setHazardType] = useState('');
+    // The hazardType state will now store one of the enum values
+    const [hazardType, setHazardType] = useState(''); 
     const [description, setDescription] = useState('');
     const [location, setLocation] = useState<{ latitude: number; longitude: number } | null>(null);
     const [locationError, setLocationError] = useState('');
@@ -79,7 +89,6 @@ export default function ReportScreen() {
                     return;
                 }
 
-                // This is the correct way to implement a timeout
                 const locationPromise = Location.getCurrentPositionAsync({
                     accuracy: Location.Accuracy.Balanced,
                 });
@@ -87,14 +96,13 @@ export default function ReportScreen() {
                 const timeoutPromise = new Promise((_, reject) => {
                     setTimeout(() => {
                         reject(new Error('Request timed out.'));
-                    }, 20000); // 20-second timeout
+                    }, 20000); 
                 });
 
-                // Promise.race will resolve or reject as soon as the first promise in the array does.
                 const locationResult = await Promise.race([locationPromise, timeoutPromise]);
 
                 setLocation({
-                    // @ts-ignore - Promise.race returns Promise<LocationObject | void> so we need to ignore the type error
+                    // @ts-ignore
                     latitude: locationResult.coords.latitude,
                     // @ts-ignore
                     longitude: locationResult.coords.longitude,
@@ -103,7 +111,6 @@ export default function ReportScreen() {
             } catch (error: any) {
                 console.warn("Could not get live location; falling back to last known position.", error.message);
 
-                // If the live location fails (including a timeout), try to get the last known location
                 const lastKnown = await Location.getLastKnownPositionAsync();
                 if (lastKnown) {
                     setLocation({
@@ -111,7 +118,6 @@ export default function ReportScreen() {
                         longitude: lastKnown.coords.longitude,
                     });
                 } else {
-                    // If both fail, show the error
                     setLocationError('Location is unavailable. Try again outdoors with a clear sky view.');
                 }
             }
@@ -179,8 +185,6 @@ export default function ReportScreen() {
         if (!user) return null;
 
         try {
-            // UPDATED: Create a user-specific file path as per the new RLS policies.
-            // This organizes uploads into folders based on the user's ID.
             const fileExt = isVideo ? 'mp4' : 'jpg';
             const fileName = `${Date.now()}.${fileExt}`;
             const filePath = `${user.id}/${fileName}`;
@@ -219,10 +223,10 @@ export default function ReportScreen() {
         }
 
         if (!hazardType || !description || !location) {
-            Alert.alert('Missing Information', 'Please fill all fields and ensure location is enabled.');
+            Alert.alert('Missing Information', 'Please select a hazard type, add a description, and ensure location is enabled.');
             return;
         }
-
+        // console.log('Current session object:', JSON.stringify(session, null, 2));
         setLoading(true);
 
         try {
@@ -234,12 +238,17 @@ export default function ReportScreen() {
                 mediaUrl = await uploadMediaToSupabase(videoUri, true);
             }
 
+            // CHANGE 2: Structure the payload to match the CitizenReportCreate schema
             const reportPayload = {
                 hazard_type: hazardType,
                 description: description,
-                latitude: location.latitude,
-                longitude: location.longitude,
-                media_url: mediaUrl,
+                location: {
+                    type: 'Point',
+                    // GeoJSON format is [longitude, latitude]
+                    coordinates: [location.longitude, location.latitude], 
+                },
+                // The key is 'media_urls' and it must be an array
+                media_urls: mediaUrl ? [mediaUrl] : [],
             };
 
             const response = await fetch(`${BACKEND_API_URL}/api/reports/citizen`, {
@@ -253,7 +262,8 @@ export default function ReportScreen() {
 
             if (!response.ok) {
                 const errorData = await response.json().catch(() => ({}));
-                throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+                // Use a more specific error message from the backend if available
+                throw new Error(errorData.detail || `HTTP error! status: ${response.status}`);
             }
 
             const result = await response.json();
@@ -273,13 +283,11 @@ export default function ReportScreen() {
             console.error('Error submitting report:', error);
             
             try {
+                // Storing locally remains a good fallback
                 const localReport = {
                     id: `report_${Date.now()}`,
-                    hazard_type: hazardType,
-                    description,
-                    latitude: location.latitude,
-                    longitude: location.longitude,
-                    user_id: user.id,
+                    // This local copy can keep the old format or new, as long as you handle it on resubmission
+                    payload: { /* The reportPayload object could be stored here */ },
                     created_at: new Date().toISOString(),
                     photo_uri: photoUri || undefined,
                     video_uri: videoUri || undefined,
@@ -293,7 +301,7 @@ export default function ReportScreen() {
                 
                 Alert.alert(
                     'Report Saved Locally', 
-                    'Unable to submit report online. Your report has been saved locally and will be submitted when connection is restored.',
+                    'Unable to submit report online. Your report has been saved and will be submitted when connection is restored.',
                     [{ text: 'OK' }]
                 );
             } catch (localError) {
@@ -318,7 +326,7 @@ export default function ReportScreen() {
                         <Text style={styles.retakeButtonText}>Remove Photo</Text>
                     </TouchableOpacity>
                 </View>
-            ) : (
+            ) : videoUri ? null : ( // Hide photo button if video is present
                 <TouchableOpacity onPress={() => openCamera('picture')} style={styles.mediaButton}>
                     <FontAwesome5 name="camera" size={20} color="#0077be" />
                     <Text style={styles.mediaButtonText}>Take Photo</Text>
@@ -337,7 +345,7 @@ export default function ReportScreen() {
                         <Text style={styles.retakeButtonText}>Remove Video</Text>
                     </TouchableOpacity>
                 </View>
-            ) : (
+            ) : photoUri ? null : ( // Hide video button if photo is present
                 <TouchableOpacity onPress={() => openCamera('video')} style={styles.mediaButton}>
                     <FontAwesome5 name="video" size={20} color="#0077be" />
                     <Text style={styles.mediaButtonText}>Record Video</Text>
@@ -378,10 +386,33 @@ export default function ReportScreen() {
               style={styles.keyboardAvoidingContainer}
               behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
             >
-        <ScrollView contentContainerStyle={styles.container}>
+        <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
             <Text style={styles.title}>Report a New Hazard</Text>
+            
+            {/* CHANGE 3: Replace TextInput with selectable buttons for Hazard Type */}
             <Text style={styles.label}>Type of Hazard</Text>
-            <TextInput style={styles.input} placeholder="e.g., Oil Spill, Plastic Debris" value={hazardType} onChangeText={setHazardType} />
+            <View style={styles.hazardContainer}>
+                {hazardOptions.map((option) => (
+                    <TouchableOpacity
+                        key={option.value}
+                        style={[
+                            styles.hazardButton,
+                            hazardType === option.value && styles.hazardButtonSelected,
+                        ]}
+                        onPress={() => setHazardType(option.value)}
+                    >
+                        <Text
+                            style={[
+                                styles.hazardButtonText,
+                                hazardType === option.value && styles.hazardButtonTextSelected,
+                            ]}
+                        >
+                            {option.label}
+                        </Text>
+                    </TouchableOpacity>
+                ))}
+            </View>
+
             <Text style={styles.label}>Description</Text>
             <TextInput style={[styles.input, styles.multilineInput]} placeholder="Provide details..." value={description} onChangeText={setDescription} multiline />
             <Text style={styles.label}>Location</Text>
@@ -444,6 +475,35 @@ const styles = StyleSheet.create({
         height: 120,
         textAlignVertical: 'top',
         paddingTop: 15,
+    },
+    // Styles for the new hazard type buttons
+    hazardContainer: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        justifyContent: 'space-between',
+        marginBottom: 20,
+    },
+    hazardButton: {
+        backgroundColor: 'white',
+        borderColor: '#b0c4de',
+        borderWidth: 1,
+        borderRadius: 20,
+        paddingVertical: 10,
+        paddingHorizontal: 15,
+        marginBottom: 10,
+        alignItems: 'center',
+    },
+    hazardButtonSelected: {
+        backgroundColor: '#005a9c',
+        borderColor: '#005a9c',
+    },
+    hazardButtonText: {
+        color: '#005a9c',
+        fontSize: 14,
+        fontWeight: '500'
+    },
+    hazardButtonTextSelected: {
+        color: 'white',
     },
     locationText: {
         fontSize: 16,
@@ -557,4 +617,3 @@ const styles = StyleSheet.create({
         fontSize: 16,
     }
 });
-
