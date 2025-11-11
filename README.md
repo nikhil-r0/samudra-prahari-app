@@ -1,4 +1,4 @@
-**Samudra Prahari (ProjectName) - Expo App with Offline Mesh Chat**
+**Samudra Prahari - Expo App with Offline Mesh Chat**
 
 This is an Expo (React Native) application featuring a powerful, decentralized, peer-to-peer chat system that works entirely offline using Bluetooth Low Energy (BLE) mesh networking.
 
